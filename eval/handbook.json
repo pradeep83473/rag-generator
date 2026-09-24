@@ -1,0 +1,39 @@
+{
+  "name": "Sample: handbook",
+  "documents": "../samples/handbook",
+  "cases": [
+    {
+      "question": "How many days of annual leave can I carry over, and until when?",
+      "expected_source": "leave-policy.md",
+      "expected_answer": ["5", "31 March"]
+    },
+    {
+      "question": "How much paid holiday does a full-time employee get each year?",
+      "expected_source": "leave-policy.md",
+      "expected_answer": ["24"]
+    },
+    {
+      "question": "How long is parental leave for a non-birth parent?",
+      "expected_source": "leave-policy.md",
+      "expected_answer": ["6 weeks"]
+    },
+    {
+      "question": "My laptop was stolen. How quickly do I have to tell someone?",
+      "expected_source": "it-guidelines.txt",
+      "expected_answer": ["24 hours"]
+    },
+    {
+      "question": "Which systems require MFA?",
+      "expected_source": "it-guidelines.txt",
+      "expected_answer": ["email", "VPN", "HR portal"]
+    },
+    {
+      "question": "What is the company's policy on remote work from abroad?",
+      "answerable": false
+    },
+    {
+      "question": "What does error E-4471 mean?",
+      "answerable": false
+    }
+  ]
+}

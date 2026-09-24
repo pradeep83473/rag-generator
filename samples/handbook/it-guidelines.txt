@@ -1,0 +1,5 @@
+IT guidelines
+
+Laptops are refreshed every three years. Lost or stolen devices must be reported to the IT service desk within 24 hours.
+Multi-factor authentication is mandatory for email, VPN and the HR portal.
+Personal devices may access email only through the approved mobile management app.

@@ -1,0 +1,29 @@
+{
+  "name": "Sample: product",
+  "documents": "../samples/product",
+  "cases": [
+    {
+      "question": "What does error E-4471 mean?",
+      "expected_source": "faq.md",
+      "expected_answer": ["firmware"]
+    },
+    {
+      "question": "How long is the warranty and can it be extended?",
+      "expected_source": "faq.md",
+      "expected_answer": ["2", "4", "60 days"]
+    },
+    {
+      "question": "Which IP address do I open to reach the router's settings?",
+      "expected_source": "faq.md",
+      "expected_answer": ["192.168.8.1"]
+    },
+    {
+      "question": "What is the capital of France?",
+      "answerable": false
+    },
+    {
+      "question": "How many days of annual leave do employees get?",
+      "answerable": false
+    }
+  ]
+}

@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAG Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F1F3F2;
+    --surface: #FFFFFF;
+    --ink: #17212B;
+    --muted: #5C6970;
+    --rule: #D4DAD8;
+    --accent: #24477A;
+    --accent-soft: #E3EAF4;
+    --mark: #FBE38C;
+    --mark-strong: #F4CF45;
+    --danger: #A23B2C;
+    --sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font: 15px/1.5 var(--sans); color: var(--ink); background: var(--paper);
+    display: grid; grid-template-columns: 280px minmax(0, 1fr) 360px; height: 100vh;
+  }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- left rail ---------- */
+  .rail { border-right: 1px solid var(--rule); display: flex; flex-direction: column; min-height: 0; }
+  .brand { padding: 20px 20px 12px; }
+  .brand h1 { font-size: 17px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  .brand p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+  .rail h2 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 18px 20px 6px; }
+  .kb-list { list-style: none; margin: 0; padding: 0 10px; overflow-y: auto; }
+  .kb-list li button {
+    width: 100%; text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: 6px;
+    display: flex; justify-content: space-between; gap: 8px;
+  }
+  .kb-list li button:hover { background: #E6EAE8; }
+  .kb-list li button[aria-current="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+  .kb-list .count { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .new-kb { margin: 8px 20px; display: grid; gap: 6px; }
+  .new-kb input, .new-kb textarea {
+    border: 1px solid var(--rule); background: var(--surface); border-radius: 6px; padding: 7px 9px; width: 100%;
+  }
+  .new-kb textarea { resize: vertical; min-height: 54px; font-size: 13px; }
+  .btn { border: 1px solid var(--accent); background: var(--accent); color: #fff; border-radius: 6px; padding: 7px 12px; font-weight: 500; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn.quiet { background: none; color: var(--accent); }
+  .status { margin-top: auto; padding: 12px 20px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--rule); }
+  .status.warn { color: var(--danger); }
+
+  /* ---------- center ---------- */
+  main { display: flex; flex-direction: column; min-height: 0; background: var(--surface); }
+  .kb-head { padding: 18px 28px 14px; border-bottom: 1px solid var(--rule); display: flex; gap: 16px; align-items: flex-start; }
+  .kb-head h2 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.015em; }
+  .kb-head p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+  .kb-head .spacer { flex: 1; }
+  .docs { padding: 12px 28px; border-bottom: 1px solid var(--rule); }
+  .drop {
+    border: 1.5px dashed var(--rule); border-radius: 8px; padding: 14px; text-align: center; color: var(--muted);
+    font-size: 13px; transition: border-color .15s, background .15s;
+  }
+  .drop.over { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  .drop label { color: var(--accent); text-decoration: underline; cursor: pointer; }
+  .doc-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; max-height: 96px; overflow-y: auto; }
+  .doc-list li {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 13px; background: var(--paper);
+    border: 1px solid var(--rule); border-radius: 999px; padding: 3px 4px 3px 10px;
+  }
+  .doc-list li.pending { opacity: .6; }
+  .doc-list li.error { border-color: var(--danger); color: var(--danger); }
+  .doc-list button { border: 0; background: none; color: var(--muted); padding: 0 6px; font-size: 15px; line-height: 1; }
+
+  .thread { flex: 1; overflow-y: auto; padding: 24px 28px; }
+  .thread .empty { color: var(--muted); max-width: 46ch; margin: 12vh auto 0; text-align: center; }
+  .thread .empty strong { display: block; color: var(--ink); font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+  .turn { max-width: 72ch; margin: 0 auto 26px; }
+  .q { font-weight: 500; font-size: 15px; margin-bottom: 8px; }
+  .a { font-family: var(--serif); font-size: 18px; line-height: 1.6; white-space: pre-wrap; }
+  .a.thinking { color: var(--muted); font-style: italic; }
+  .a.ungrounded { color: var(--muted); }
+  .rewrite { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .cite {
+    font-family: var(--sans); font-size: 12px; font-weight: 600; background: var(--mark); color: var(--ink);
+    border: 0; border-radius: 3px; padding: 0 4px; margin: 0 1px; vertical-align: 2px;
+  }
+  .cite:hover, .cite.active { background: var(--mark-strong); }
+  .error-text { color: var(--danger); font-family: var(--sans); font-size: 14px; }
+
+  .ask { border-top: 1px solid var(--rule); padding: 14px 28px 18px; }
+  .ask form { max-width: 72ch; margin: 0 auto; display: flex; gap: 8px; align-items: flex-end; }
+  .ask textarea {
+    flex: 1; resize: none; border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px;
+    min-height: 44px; max-height: 160px; background: var(--paper);
+  }
+
+  /* ---------- sources ---------- */
+  aside { border-left: 1px solid var(--rule); display: flex; flex-direction: column; min-height: 0; }
+  aside h2 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 0; padding: 20px 20px 10px; }
+  .sources { overflow-y: auto; padding: 0 16px 20px; }
+  .sources .hint { color: var(--muted); font-size: 13px; padding: 0 4px; }
+  .src { border-left: 3px solid transparent; padding: 10px 10px 10px 12px; margin-bottom: 6px; border-radius: 0 6px 6px 0; }
+  .src.cited { border-left-color: var(--mark-strong); }
+  .src.active { background: #FFF8DA; }
+  .src header { display: flex; gap: 8px; align-items: baseline; font-size: 13px; }
+  .src .num { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .src .file { font-weight: 500; overflow-wrap: anywhere; }
+  .src .meta { color: var(--muted); font-size: 12px; margin-left: auto; white-space: nowrap; }
+  .src p { margin: 6px 0 0; font-family: var(--serif); font-size: 14px; line-height: 1.55; color: #33404A;
+           display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+  .src.active p { -webkit-line-clamp: unset; }
+
+  .hidden { display: none !important; }
+  @media (min-width: 1101px) { #toggle-sources { display: none; } }
+
+  @media (max-width: 1100px) {
+    body { grid-template-columns: 240px minmax(0, 1fr); }
+    aside { display: none; }
+    body.show-sources aside { display: flex; position: fixed; inset: 0 0 0 auto; width: min(380px, 92vw); background: var(--paper); z-index: 5; box-shadow: -8px 0 24px rgba(23,33,43,.12); }
+  }
+  @media (max-width: 720px) {
+    body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; min-height: 100vh; }
+    .rail { border-right: 0; border-bottom: 1px solid var(--rule); }
+    .kb-list { max-height: 140px; }
+    main { min-height: 80vh; }
+    .kb-head, .docs, .thread, .ask { padding-left: 16px; padding-right: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+  <nav class="rail" aria-label="Knowledge bases">
+    <div class="brand">
+      <h1>RAG Generator</h1>
+      <p>Upload documents, get a Q&amp;A assistant.</p>
+    </div>
+    <h2 id="kb-heading">Knowledge bases</h2>
+    <ul class="kb-list" id="kb-list" aria-labelledby="kb-heading"></ul>
+    <h2>New knowledge base</h2>
+    <form class="new-kb" id="new-kb">
+      <input id="kb-name" placeholder="Name, e.g. Employee handbook" required maxlength="120" aria-label="Knowledge base name">
+      <textarea id="kb-instructions" placeholder="Answer style (optional), e.g. Answer for new joiners in plain English." maxlength="4000" aria-label="Answer instructions"></textarea>
+      <button class="btn" type="submit">Create knowledge base</button>
+    </form>
+    <div class="status" id="status">Checking server…</div>
+  </nav>
+
+  <main>
+    <section id="no-kb" class="thread">
+      <div class="empty"><strong>Create a knowledge base to start</strong>Each knowledge base is its own assistant, answering only from the documents you give it.</div>
+    </section>
+
+    <section id="kb-view" class="hidden" style="display:flex;flex-direction:column;min-height:0;flex:1">
+      <header class="kb-head">
+        <div>
+          <h2 id="kb-title"></h2>
+          <p id="kb-sub"></p>
+        </div>
+        <span class="spacer"></span>
+        <button class="btn quiet" id="toggle-sources" type="button">Sources</button>
+        <button class="btn quiet" id="clear-chat" type="button">New conversation</button>
+        <button class="btn quiet" id="delete-kb" type="button">Delete</button>
+      </header>
+      <div class="docs">
+        <div class="drop" id="drop">
+          Drop files here or <label for="file-input">choose files</label>
+          <span id="ext-hint"></span>
+          <input type="file" id="file-input" multiple class="hidden">
+        </div>
+        <ul class="doc-list" id="doc-list" aria-label="Documents"></ul>
+      </div>
+      <div class="thread" id="thread" aria-live="polite"></div>
+      <div class="ask">
+        <form id="ask-form">
+          <textarea id="question" rows="1" placeholder="Ask a question about these documents" aria-label="Question"></textarea>
+          <button class="btn" id="ask-btn" type="submit">Ask</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <aside aria-label="Sources">
+    <h2>Sources for the latest answer</h2>
+    <div class="sources" id="sources"><p class="hint">Passages used to answer will appear here. Highlighted numbers in an answer link to them.</p></div>
+  </aside>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const state = { kbs: [], current: null, history: [], turns: [], health: null, busy: false };
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, opts);
+  if (res.status === 204) return null;
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail || body);
+    throw new Error(detail || `Request failed (${res.status})`);
+  }
+  return body;
+}
+
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") node.className = v;
+    else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+    else node.setAttribute(k, v);
+  }
+  for (const c of children) if (c != null) node.append(c);
+  return node;
+}
+
+async function loadHealth() {
+  try {
+    state.health = await api("/api/health");
+    const s = $("status");
+    if (state.health.llm_configured) {
+      s.textContent = `${state.health.chat_model} · ${state.health.embedding_model}`;
+    } else {
+      s.textContent = "OPENAI_API_KEY is not set. Uploads and questions will fail until it is.";
+      s.classList.add("warn");
+    }
+    $("ext-hint").textContent = ` (PDF, Word, Markdown, HTML, CSV, JSON or text, up to ${state.health.max_upload_mb} MB each)`;
+    $("file-input").accept = state.health.supported_extensions.join(",");
+  } catch { $("status").textContent = "Server unreachable."; }
+}
+
+async function loadKbs(selectId) {
+  state.kbs = await api("/api/collections");
+  renderKbList();
+  const target = selectId || state.current?.id || state.kbs[0]?.id;
+  if (target) selectKb(target); else showNoKb();
+}
+
+function renderKbList() {
+  const list = $("kb-list");
+  list.replaceChildren(...state.kbs.map((kb) =>
+    el("li", {}, el("button", {
+      type: "button", "aria-current": String(kb.id === state.current?.id), onclick: () => selectKb(kb.id)
+    }, el("span", {}, kb.name), el("span", { class: "count" }, `${kb.document_count} docs`)))
+  ));
+  if (!state.kbs.length) list.append(el("li", { class: "count", style: "padding:4px 10px" }, "None yet."));
+}
+
+function showNoKb() {
+  state.current = null;
+  $("no-kb").classList.remove("hidden");
+  $("kb-view").classList.add("hidden");
+}
+
+async function selectKb(id) {
+  const kb = state.kbs.find((k) => k.id === id);
+  if (!kb) return showNoKb();
+  if (state.current?.id !== id) { state.history = []; state.turns = []; renderSources([]); }
+  state.current = kb;
+  $("no-kb").classList.add("hidden");
+  $("kb-view").classList.remove("hidden");
+  $("kb-title").textContent = kb.name;
+  $("kb-sub").textContent = `${kb.document_count} document${kb.document_count === 1 ? "" : "s"} · ${kb.chunk_count} passages indexed`;
+  renderKbList();
+  renderThread();
+  await loadDocs();
+}
+
+async function loadDocs() {
+  const docs = await api(`/api/collections/${state.current.id}/documents`);
+  $("doc-list").replaceChildren(...docs.map((d) =>
+    el("li", { title: `${d.chunks} passages${d.pages ? `, ${d.pages} pages` : ""}` },
+      d.filename,
+      el("button", { type: "button", "aria-label": `Remove ${d.filename}`, onclick: () => removeDoc(d) }, "×"))
+  ));
+}
+
+async function refreshCurrent() {
+  const kb = await api(`/api/collections/${state.current.id}`);
+  const i = state.kbs.findIndex((k) => k.id === kb.id);
+  state.kbs[i] = kb;
+  state.current = kb;
+  $("kb-sub").textContent = `${kb.document_count} document${kb.document_count === 1 ? "" : "s"} · ${kb.chunk_count} passages indexed`;
+  renderKbList();
+}
+
+async function removeDoc(doc) {
+  if (!confirm(`Remove "${doc.filename}" from ${state.current.name}?`)) return;
+  await api(`/api/collections/${state.current.id}/documents/${doc.id}`, { method: "DELETE" });
+  await loadDocs(); await refreshCurrent();
+}
+
+async function upload(files) {
+  if (!files.length || !state.current) return;
+  const list = $("doc-list");
+  const pending = [...files].map((f) => { const li = el("li", { class: "pending" }, `Indexing ${f.name}…`); list.append(li); return li; });
+  const form = new FormData();
+  for (const f of files) form.append("files", f);
+  try {
+    const out = await api(`/api/collections/${state.current.id}/documents`, { method: "POST", body: form });
+    pending.forEach((li) => li.remove());
+    await loadDocs(); await refreshCurrent();
+    for (const r of out.results.filter((r) => r.status !== "indexed")) {
+      list.append(el("li", { class: r.status === "error" ? "error" : "", title: r.detail || "" },
+        `${r.filename}: ${r.status === "duplicate" ? "already indexed" : r.detail}`));
+    }
+  } catch (err) {
+    pending.forEach((li) => { li.className = "error"; li.textContent = `Upload failed: ${err.message}`; });
+  }
+}
+
+function renderAnswer(text, sources, turnIndex) {
+  const frag = document.createDocumentFragment();
+  const parts = text.split(/(\[\d+\])/g);
+  for (const part of parts) {
+    const m = part.match(/^\[(\d+)\]$/);
+    if (m && sources.some((s) => s.number === +m[1])) {
+      frag.append(el("button", {
+        class: "cite", type: "button", "aria-label": `Show source ${m[1]}`,
+        onclick: () => focusSource(turnIndex, +m[1])
+      }, m[1]));
+    } else frag.append(part);
+  }
+  return frag;
+}
+
+function renderThread() {
+  const thread = $("thread");
+  if (!state.turns.length) {
+    const docs = state.current?.document_count || 0;
+    thread.replaceChildren(el("div", { class: "empty" },
+      el("strong", {}, docs ? "Ask anything about these documents" : "Add documents to this knowledge base"),
+      docs ? "Answers cite the passages they come from. Follow-up questions keep the conversation's context."
+           : "Drop PDFs, Word files, Markdown, HTML, CSV or text above. They are indexed as soon as they upload."));
+    return;
+  }
+  thread.replaceChildren(...state.turns.map((t, i) => {
+    const a = el("div", { class: "a" + (t.pending ? " thinking" : "") + (t.grounded === false ? " ungrounded" : "") });
+    if (t.pending) a.textContent = "Searching the documents…";
+    else if (t.error) a.append(el("span", { class: "error-text" }, t.error));
+    else a.append(renderAnswer(t.answer, t.sources, i));
+    const rewrite = t.search_query && t.search_query !== t.question
+      ? el("div", { class: "rewrite" }, `Searched for: ${t.search_query}`) : null;
+    return el("article", { class: "turn" }, el("div", { class: "q" }, t.question), a, rewrite);
+  }));
+  thread.scrollTop = thread.scrollHeight;
+}
+
+function renderSources(sources, activeNumber) {
+  const box = $("sources");
+  if (!sources.length) {
+    box.replaceChildren(el("p", { class: "hint" }, "Passages used to answer will appear here. Highlighted numbers in an answer link to them."));
+    return;
+  }
+  const ordered = [...sources].sort((a, b) => (b.cited - a.cited) || (a.number - b.number));
+  box.replaceChildren(...ordered.map((s) => el("div", {
+      class: "src" + (s.cited ? " cited" : "") + (s.number === activeNumber ? " active" : ""), id: `src-${s.number}`
+    },
+    el("header", {}, el("span", { class: "num" }, s.number), el("span", { class: "file" }, s.filename),
+       el("span", { class: "meta" }, (s.page ? `p. ${s.page} · ` : "") + (s.cited ? "cited" : "retrieved"))),
+    el("p", {}, s.text))));
+}
+
+function focusSource(turnIndex, number) {
+  renderSources(state.turns[turnIndex].sources, number);
+  document.body.classList.add("show-sources");
+  document.querySelectorAll(".cite").forEach((c) => c.classList.remove("active"));
+  document.getElementById(`src-${number}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+async function ask(question) {
+  if (state.busy || !question.trim() || !state.current) return;
+  state.busy = true; $("ask-btn").disabled = true;
+  const turn = { question, pending: true };
+  state.turns.push(turn); renderThread();
+  try {
+    const out = await api(`/api/collections/${state.current.id}/query`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question, history: state.history })
+    });
+    Object.assign(turn, out, { pending: false });
+    state.history.push({ role: "user", content: question }, { role: "assistant", content: out.answer });
+    renderSources(out.sources);
+  } catch (err) {
+    Object.assign(turn, { pending: false, error: err.message });
+  }
+  state.busy = false; $("ask-btn").disabled = false;
+  renderThread();
+}
+
+// ---------- wiring ----------
+$("new-kb").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const kb = await api("/api/collections", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: $("kb-name").value, instructions: $("kb-instructions").value })
+  });
+  $("kb-name").value = ""; $("kb-instructions").value = "";
+  await loadKbs(kb.id);
+});
+$("delete-kb").addEventListener("click", async () => {
+  if (!confirm(`Delete "${state.current.name}" and all its documents?`)) return;
+  await api(`/api/collections/${state.current.id}`, { method: "DELETE" });
+  state.current = null; await loadKbs();
+});
+$("clear-chat").addEventListener("click", () => { state.history = []; state.turns = []; renderThread(); renderSources([]); });
+$("toggle-sources").addEventListener("click", () => document.body.classList.toggle("show-sources"));
+$("ask-form").addEventListener("submit", (e) => { e.preventDefault(); const q = $("question").value; $("question").value = ""; ask(q); });
+$("question").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("ask-form").requestSubmit(); }
+});
+$("question").addEventListener("input", (e) => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; });
+$("file-input").addEventListener("change", (e) => { upload(e.target.files); e.target.value = ""; });
+const drop = $("drop");
+["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", (e) => upload(e.dataTransfer.files));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") document.body.classList.remove("show-sources"); });
+
+loadHealth();
+loadKbs().catch((err) => { $("status").textContent = err.message; });
+</script>
+</body>
+</html>
